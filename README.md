@@ -13,7 +13,7 @@ Declarer le .jar du servelt dans web.xml
 Il faut faire en sorte que le sripte change en .jar  
 
 Doget->processerequest 
-
+mvn clean package -DskipTests
 ## Etape 2 
 Chargemenet de classe 
 au demarage de l'apli web on va mettre une methode (optionnel)
