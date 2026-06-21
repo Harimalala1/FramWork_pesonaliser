@@ -1,4 +1,7 @@
 @echo off
+:: Force Windows à trouver le JDK 21 (indispensable pour javac et jar)
+SET PATH=D:\jdk21\bin;%PATH%
+
 :: Définition des variables
 set APP_NAME=framWorkPerso
 set SRC_DIR=src\main\java
@@ -13,7 +16,6 @@ if exist %BUILD_DIR% rmdir /s /q %BUILD_DIR%
 mkdir %BUILD_DIR%\WEB-INF\classes
 
 :: Compilation des fichiers Java
-:: Sous Windows CMD, on liste les fichiers .java dans un fichier temporaire
 dir /s /B %SRC_DIR%\*.java > sources.txt
 javac -cp "%SERVLET_API_JAR%" -d %BUILD_DIR%\WEB-INF\classes @sources.txt
 del sources.txt

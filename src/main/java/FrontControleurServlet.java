@@ -1,6 +1,6 @@
-package src;
+package main.java;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.PrintWriter; 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;  
 import jakarta.servlet.http.HttpServletRequest;

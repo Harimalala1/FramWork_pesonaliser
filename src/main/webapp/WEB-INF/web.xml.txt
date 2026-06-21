@@ -17,3 +17,6 @@
     </servlet-mapping>
 
 </web-app>
+
+
+lib dans webapp/web_inf 
