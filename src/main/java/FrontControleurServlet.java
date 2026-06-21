@@ -1,21 +1,22 @@
-package src;
+package main.java;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.PrintWriter; 
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServlet;  
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-Public class PushServerServlet extends HttpServlet { 
+public class FrontControleurServlet extends HttpServlet { 
     @Override
     protected void doGet (HttpServletRequest req, HttpServletResponse resp)
-    throws SecurityException, IOException {
+    throws ServletException, IOException { // <-- Corrigé ici
         // Appeler la fonction processRequest
         processRequest(req, resp);
     }
+    
     @Override
     protected void doPost (HttpServletRequest req, HttpServletResponse resp)
-    throws SecurityException, IOException {
+    throws ServletException, IOException { // <-- Corrigé ici
        // Appeler la fonction processRequest
         processRequest(req, resp);
     }
