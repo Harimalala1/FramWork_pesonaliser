@@ -1,37 +1,22 @@
 @echo off
-:: Force Windows à trouver le JDK 21 (indispensable pour javac et jar)
-SET PATH=D:\jdk21\bin;%PATH%
+setlocal
 
-:: Définition des variables
-set APP_NAME=framWorkPerso
-set SRC_DIR=src\main\java
-set WEB_DIR=src\main\webapp
-set BUILD_DIR=build
-set LIB_DIR=lib
-set TOMCAT_WEBAPPS=D:\xampp\tomcat\webapps
-set SERVLET_API_JAR=%LIB_DIR%\servlet-api.jar
+set "APP_NAME=framework"
+set "VERSION=1.0"
+set "BUILD_DIR=build"
+set "OUTPUT_JAR=%BUILD_DIR%\framWorkPerso.jar"
 
-:: Nettoyage et création des répertoires temporaires
-if exist %BUILD_DIR% rmdir /s /q %BUILD_DIR%
-mkdir %BUILD_DIR%\WEB-INF\classes
+if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
 
-:: Compilation des fichiers Java
-dir /s /B %SRC_DIR%\*.java > sources.txt
-javac -cp "%SERVLET_API_JAR%" -d %BUILD_DIR%\WEB-INF\classes @sources.txt
-del sources.txt
+call mvn clean package -DskipTests
+if errorlevel 1 exit /b 1
 
-:: Copier les fichiers web (web.xml, JSP, etc.)
-xcopy /E /I /Y %WEB_DIR%\* %BUILD_DIR%\
+if exist "%OUTPUT_JAR%" del /f /q "%OUTPUT_JAR%"
 
-:: Générer le fichier .war dans le dossier build
-cd %BUILD_DIR%
-jar -cvf %APP_NAME%.war *
-cd ..
-
-:: Déploiement dans Tomcat
-copy /Y %BUILD_DIR%\%APP_NAME%.war "%TOMCAT_WEBAPPS%\"
+copy /y "target\%APP_NAME%-%VERSION%.jar" "%OUTPUT_JAR%"
+if errorlevel 1 exit /b 1
 
 echo.
-echo Deploiement termine. Redemarrez Tomcat si necessaire.
+echo JAR cree avec succes: %OUTPUT_JAR%
 echo.
 pause
