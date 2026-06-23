@@ -14,7 +14,7 @@ Il faut faire en sorte que le sripte change en .jar
 
 Doget->processerequest 
 mvn clean package -DskipTests
-## Etape 2 
+## Etape 2 :Sprint 1
 Chargemenet de classe 
 au demarage de l'apli web on va mettre une methode (optionnel)
 
@@ -28,7 +28,7 @@ dans processrequest on fais un bouclet du tableau et apres offcontroleeur
 
 on cheerche ou sont tout les paqueget ou il y a les controleurs
 
-## Etape 3
+## Etape 3: Sprint2
 
 Tsy mila url associer @ class fa methode associer @ url
 Rah manana clas dep.controleur anoter @ anotation 
