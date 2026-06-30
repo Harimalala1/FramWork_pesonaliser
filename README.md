@@ -38,3 +38,14 @@ cote fram work micreer class d'anotation
 rah misy anotation de alaina ny url 
 
 Mandalo ao @ processs request daholy ohany ny url fa jerena hoe supporter sa tsy supportter le izy -> refa supporter de affichena daholy izy rehetra
+
+
+## Sprint3
+
+Pour le test du spint3 on ajoute des methode de meme url donc il devrais y avoir un throws exeption
+
+## sprint4
+Maintenant on change dans le code et on deploy  puis ca vas vers tomcat 
+
+on creer un emethode que le tomcat appel avant le chargement 
+
