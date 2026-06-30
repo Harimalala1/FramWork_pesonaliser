@@ -1,4 +1,4 @@
-package framework;
+package main.java;
 
 public class Mapping {
 
