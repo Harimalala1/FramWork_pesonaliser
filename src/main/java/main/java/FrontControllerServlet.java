@@ -18,7 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import main.java.annotation.Controller;
 
-public class FrontControleurServlet extends HttpServlet {
+public class FrontControllerServlet extends HttpServlet {
     private final List<String> listClassAnnoted = new ArrayList<>();
     private String packageName;
 
