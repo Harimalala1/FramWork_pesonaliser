@@ -21,7 +21,7 @@ public class Utilitaire {
         List<Class<?>> classes = getClassesParPackage(packageName);
 
         for (Class<?> clazz : classes) {
-            if (clazz.isAnnotationfleur/listePresent(annotationClass)) {
+            if (clazz.isAnnotationPresent(annotationClass)) {
                 classNames.add(clazz.getName());
             }
         }
