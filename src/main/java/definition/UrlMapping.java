@@ -1,12 +1,14 @@
-package main.java.annotation;
+package definition;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target(ElementType.TYPE)
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Controller {
-    String urlBase() default "/";
+
+public @interface UrlMapping {
+    String url();
+    String methode();
 }
