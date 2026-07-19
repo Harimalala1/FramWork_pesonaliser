@@ -26,7 +26,6 @@ public class FrontServletController extends HttpServlet {
     // throw new ServletException(e);
     // }
     // }
-
     private Utilitaire utilitaire = new Utilitaire();
 
     public void proccessRequest(HttpServletRequest req, HttpServletResponse res) throws Exception {
