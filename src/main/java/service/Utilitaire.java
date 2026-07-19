@@ -3,6 +3,7 @@ package service;
 import java.util.*;
 
 import definition.UrlMapping;
+
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -137,7 +138,7 @@ public class Utilitaire {
 
         String fullPath = prefix + mv.getViewName() + suffix;
 
-        RequestDispatcher dispatcher = request.getRequestDispatcher(fullPath);
-        dispatcher.forward(request, response);
+        // RequestDispatcher dispatcher = request.getRequestDispatcher(fullPath);
+        // dispatcher.forward(request, response);
     }
 }

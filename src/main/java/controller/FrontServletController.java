@@ -26,6 +26,7 @@ public class FrontServletController extends HttpServlet {
     // throw new ServletException(e);
     // }
     // }
+
     private Utilitaire utilitaire = new Utilitaire();
 
     public void proccessRequest(HttpServletRequest req, HttpServletResponse res) throws Exception {
@@ -81,6 +82,7 @@ public class FrontServletController extends HttpServlet {
         // }
         // }
     }
+    
     // sprint0
     protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         try {
