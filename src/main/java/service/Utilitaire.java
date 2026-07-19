@@ -138,7 +138,7 @@ public class Utilitaire {
 
         String fullPath = prefix + mv.getViewName() + suffix;
 
-        // RequestDispatcher dispatcher = request.getRequestDispatcher(fullPath);
-        // dispatcher.forward(request, response);
+        RequestDispatcher dispatcher = request.getRequestDispatcher(fullPath);
+        dispatcher.forward(request, response);
     }
 }
