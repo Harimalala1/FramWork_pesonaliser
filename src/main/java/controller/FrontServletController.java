@@ -13,10 +13,8 @@ import definition.*;
 
 @Controller
 public class FrontServletController extends HttpServlet {
-
+    //pas utiliser pour l'instant
     // private List<String> classNameController;
-    private Utilitaire utilitaire = new Utilitaire();
-
     // public void init() throws ServletException {
     // String packageName = this.getInitParameter("packageName");
 
@@ -28,6 +26,8 @@ public class FrontServletController extends HttpServlet {
     // throw new ServletException(e);
     // }
     // }
+
+    private Utilitaire utilitaire = new Utilitaire();
 
     public void proccessRequest(HttpServletRequest req, HttpServletResponse res) throws Exception {
         res.setContentType("text/plain;charset=UTF-8");
@@ -82,7 +82,7 @@ public class FrontServletController extends HttpServlet {
         // }
         // }
     }
-
+    // sprint0
     protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         try {
             proccessRequest(req, res);
