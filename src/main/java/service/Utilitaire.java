@@ -3,6 +3,7 @@ package service;
 import java.util.*;
 
 import definition.UrlMapping;
+import definition.WebApi;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
@@ -66,7 +67,11 @@ public class Utilitaire {
             Method methode = classMethod.getMethod(nomMethode);
             Object instance = classMethod.getDeclaredConstructor().newInstance();
 
-            return methode.invoke(instance);
+            // return methode.invoke(instance);
+            return new HandlerResult(
+            methode.invoke(instance),
+            urlMethode.isWebApi()
+            );
         }
 
         List<String> urlsDisponibles = new ArrayList<>();
@@ -85,8 +90,14 @@ public class Utilitaire {
         for (Class<?> clazz : classes) {
             for (Method methode : clazz.getDeclaredMethods()) {
                 if (methode.isAnnotationPresent(UrlMapping.class)) {
+                //     urlMappings.put(ann.url(), new UrlMethode(clazz.getSimpleName(), methode.getName()));
+                // }
                     UrlMapping ann = methode.getAnnotation(UrlMapping.class);
-                    urlMappings.put(ann.url(), new UrlMethode(clazz.getSimpleName(), methode.getName()));
+                    boolean webApi = methode.isAnnotationPresent(WebApi.class);
+                    urlMappings.put(ann.url(), new UrlMethode(
+                            clazz.getSimpleName(),
+                            methode.getName(),
+                            webApi));
                 }
             }
         }
@@ -98,13 +109,18 @@ public class Utilitaire {
             throws Exception {
 
         List<Class<?>> classes = getClassesParPackage(packageName);
-
+                
         for (Class<?> clazz : classes) {
             for (Method methode : clazz.getDeclaredMethods()) {
                 if (methode.isAnnotationPresent(UrlMapping.class)) {
                     UrlMapping ann = methode.getAnnotation(UrlMapping.class);
+                    // UrlMethode urlMethode = new UrlMethode(clazz.getSimpleName(), methode.getName());
                     UtilMethode utilMethode = new UtilMethode(ann.url(), ann.methode());
-                    UrlMethode urlMethode = new UrlMethode(clazz.getSimpleName(), methode.getName());
+                    boolean webApi = methode.isAnnotationPresent(WebApi.class);
+                    UrlMethode urlMethode = new UrlMethode(
+                            clazz.getSimpleName(),
+                            methode.getName(),
+                            webApi);
 
                     if (urlMappings != null) {
                         for (Map.Entry<UtilMethode, UrlMethode> entry : urlMappings.entrySet()) {
@@ -141,4 +157,5 @@ public class Utilitaire {
         RequestDispatcher dispatcher = request.getRequestDispatcher(fullPath);
         dispatcher.forward(request, response);
     }
+    
 }
