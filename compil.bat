@@ -1,17 +1,32 @@
 @echo off
-REM Compilation du framework -> FrontServletController.jar
-REM A lancer depuis la racine du projet (le dossier qui contient "src" et "lib")
+REM Compile le framework pour Tomcat 8.5 (javax.servlet) SANS modifier tes sources.
+REM Les sources restent en jakarta.servlet : une copie temporaire est convertie en javax.servlet.
+REM A lancer depuis la racine du projet du framework (le dossier qui contient "src").
+
+set TOMCAT_API=D:\xampp\tomcat\lib\servlet-api.jar
+
+if not exist "%TOMCAT_API%" (
+    echo ERREUR : %TOMCAT_API% introuvable
+    pause
+    exit /b 1
+)
 
 echo Nettoyage...
-if exist controller rmdir /s /q controller
-if exist definition rmdir /s /q definition
-if exist service rmdir /s /q service
-if exist listener rmdir /s /q listener
+if exist tmp-javax rmdir /s /q tmp-javax
+if exist tmp-classes rmdir /s /q tmp-classes
 if exist FrontServletController.jar del FrontServletController.jar
 
+echo Conversion jakarta -^> javax dans une copie temporaire...
+xcopy src\main\java tmp-javax /e /i /q >nul
+powershell -NoProfile -Command "Get-ChildItem tmp-javax -Recurse -Filter *.java | ForEach-Object { [IO.File]::WriteAllText($_.FullName, ([IO.File]::ReadAllText($_.FullName) -replace 'jakarta\.servlet','javax.servlet')) }"
+
 echo Compilation...
-javac -cp "lib/servlet-api.jar" -d . src/main/java/definition/*.java src/main/java/service/*.java src/main/java/listener/*.java src/main/java/controller/*.java
-if errorlevel 1 (
+mkdir tmp-classes
+dir /s /b tmp-javax\*.java > sources.txt
+javac -encoding UTF-8 -cp "%TOMCAT_API%" -d tmp-classes @sources.txt
+set ERR=%errorlevel%
+del sources.txt
+if not "%ERR%"=="0" (
     echo.
     echo ERREUR : la compilation a echoue.
     pause
@@ -19,14 +34,11 @@ if errorlevel 1 (
 )
 
 echo Creation du jar...
-jar -cvf FrontServletController.jar controller definition service listener
-if errorlevel 1 (
-    echo.
-    echo ERREUR : la creation du jar a echoue.
-    pause
-    exit /b 1
-)
+jar -cvf FrontServletController.jar -C tmp-classes .
+
+rmdir /s /q tmp-javax
+rmdir /s /q tmp-classes
 
 echo.
-echo Termine : FrontServletController.jar
+echo Termine : FrontServletController.jar ^(version Tomcat 8.5 / javax^)
 pause
