@@ -1,29 +1,53 @@
 package service;
 
-import java.util.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Map;
 
+import definition.ApiRest;
 import definition.UrlMapping;
-import definition.WebApi;
-
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import java.io.File;
-import java.io.IOException;
-import java.lang.annotation.*;
-import java.lang.reflect.Method;
-
 public class Utilitaire {
+
+    // ===================== Sprint 1 =====================
+    // Retourne les classes du package qui ont l'annotation au niveau demandé
     public List<String> getAllClassesWithAnnotationInPackage(String packageName,
-            Class<? extends Annotation> annotationClass) throws Exception {
+            Class<? extends Annotation> annotationClass, Niveau niveau) throws Exception {
         List<String> classNames = new ArrayList<>();
 
-        List<Class<?>> classes = getClassesParPackage(packageName);
-
-        for (Class<?> clazz : classes) {
-            if (clazz.isAnnotationPresent(annotationClass)) {
+        for (Class<?> clazz : getClassesParPackage(packageName)) {
+            boolean trouve = false;
+            if (niveau == Niveau.CLASSE) {
+                trouve = clazz.isAnnotationPresent(annotationClass);
+            } else if (niveau == Niveau.METHODE) {
+                for (Method m : clazz.getDeclaredMethods()) {
+                    if (m.isAnnotationPresent(annotationClass)) {
+                        trouve = true;
+                        break;
+                    }
+                }
+            } else if (niveau == Niveau.VARIABLE) {
+                for (Field f : clazz.getDeclaredFields()) {
+                    if (f.isAnnotationPresent(annotationClass)) {
+                        trouve = true;
+                        break;
+                    }
+                }
+            }
+            if (trouve) {
                 classNames.add(clazz.getName());
             }
         }
@@ -32,16 +56,18 @@ public class Utilitaire {
 
     public static List<Class<?>> getClassesParPackage(String packageName) throws Exception {
         List<Class<?>> classes = new ArrayList<>();
-
         String chemin = packageName.replace(".", "/");
 
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        var ressources = classLoader.getResources(chemin);
+        Enumeration<java.net.URL> ressources = classLoader.getResources(chemin);
 
         while (ressources.hasMoreElements()) {
             File dossier = new File(ressources.nextElement().toURI());
-
-            for (File fichier : dossier.listFiles()) {
+            File[] fichiers = dossier.listFiles();
+            if (fichiers == null) {
+                continue;
+            }
+            for (File fichier : fichiers) {
                 if (fichier.getName().endsWith(".class")) {
                     String nomClasse = fichier.getName().replace(".class", "");
                     classes.add(Class.forName(packageName + "." + nomClasse));
@@ -51,111 +77,170 @@ public class Utilitaire {
         return classes;
     }
 
-    public Object lireMethodeAndClass(String url, String httpMethode, String packageName,
-            Map<UtilMethode, UrlMethode> urlMappings) throws Exception {
-
-        UtilMethode cle = new UtilMethode(url, httpMethode);
-        if (urlMappings == null) {
-            throw new Exception(
-                    "Erreur : urlMappings est null. Assurez-vous que le ListenerDemarrage a été correctement initialisé.");
-        }
-
-        UrlMethode urlMethode = urlMappings.get(cle);
-        if (urlMethode != null) {
-            String nomMethode = urlMethode.getMethodeName();
-            Class<?> classMethod = Class.forName(packageName + "." + urlMethode.getClassName());
-            Method methode = classMethod.getMethod(nomMethode);
-            Object instance = classMethod.getDeclaredConstructor().newInstance();
-
-            // return methode.invoke(instance);
-            return new HandlerResult(
-            methode.invoke(instance),
-            urlMethode.isWebApi()
-            );
-        }
-
-        List<String> urlsDisponibles = new ArrayList<>();
-        for (UtilMethode u : urlMappings.keySet()) {
-            urlsDisponibles.add("[" + u.getUrl() + ", " + u.getMethode() + "]");
-        }
-        throw new Exception("Erreur : '" + url + "' [" + httpMethode + "] non trouvée. "
-                + "URLs disponibles : " + urlsDisponibles);
-    }
-
-    public Map<String, UrlMethode> getAllUrlMappings(String packageName) throws Exception {
-        Map<String, UrlMethode> urlMappings = new HashMap<>();
-
-        List<Class<?>> classes = getClassesParPackage(packageName);
-
-        for (Class<?> clazz : classes) {
-            for (Method methode : clazz.getDeclaredMethods()) {
-                if (methode.isAnnotationPresent(UrlMapping.class)) {
-                //     urlMappings.put(ann.url(), new UrlMethode(clazz.getSimpleName(), methode.getName()));
-                // }
-                    UrlMapping ann = methode.getAnnotation(UrlMapping.class);
-                    boolean webApi = methode.isAnnotationPresent(WebApi.class);
-                    urlMappings.put(ann.url(), new UrlMethode(
-                            clazz.getSimpleName(),
-                            methode.getName(),
-                            webApi));
-                }
-            }
-        }
-
-        return urlMappings;
-    }
-
+    // ===================== Sprint 3 / 4 =====================
+    // Remplit la map au démarrage (void, la map est passée en paramètre)
     public void getAllUrlMappingsWithUtilMethode(String packageName, Map<UtilMethode, UrlMethode> urlMappings)
             throws Exception {
 
-        List<Class<?>> classes = getClassesParPackage(packageName);
-                
-        for (Class<?> clazz : classes) {
+        for (Class<?> clazz : getClassesParPackage(packageName)) {
             for (Method methode : clazz.getDeclaredMethods()) {
-                if (methode.isAnnotationPresent(UrlMapping.class)) {
-                    UrlMapping ann = methode.getAnnotation(UrlMapping.class);
-                    // UrlMethode urlMethode = new UrlMethode(clazz.getSimpleName(), methode.getName());
-                    UtilMethode utilMethode = new UtilMethode(ann.url(), ann.methode());
-                    boolean webApi = methode.isAnnotationPresent(WebApi.class);
-                    UrlMethode urlMethode = new UrlMethode(
-                            clazz.getSimpleName(),
-                            methode.getName(),
-                            webApi);
-
-                    if (urlMappings != null) {
-                        for (Map.Entry<UtilMethode, UrlMethode> entry : urlMappings.entrySet()) {
-                            UtilMethode existingUtilMethode = entry.getKey();
-                            if (utilMethode.equals(existingUtilMethode)) {
-                                throw new Exception("Erruer :  l'url : '" + utilMethode.getUrl() + "' et la methode : '"
-                                        + utilMethode.getMethode() + "' existe deja dans la class : '"
-                                        + entry.getValue().getClassName() + "' et la methode : '"
-                                        + entry.getValue().getMethodeName() + "'");
-                            }
-                        }
-                    }
-
-                    urlMappings.put(utilMethode, urlMethode);
+                if (!methode.isAnnotationPresent(UrlMapping.class)) {
+                    continue;
                 }
+                UrlMapping ann = methode.getAnnotation(UrlMapping.class);
+                UtilMethode cle = new UtilMethode(ann.url(), ann.methode());
+
+                // equals() surdéfini : détecte les doublons url + methode
+                if (urlMappings.containsKey(cle)) {
+                    UrlMethode existant = urlMappings.get(cle);
+                    throw new Exception("Erreur : l'url '" + cle.getUrl() + "' avec la methode '"
+                            + cle.getMethode() + "' existe deja dans la classe '"
+                            + existant.getClassName() + "' et la methode '"
+                            + existant.getMethodeName() + "'");
+                }
+                // Sprint 6 : @ApiRest(json = true) => reponse JSON, sans vue
+                ApiRest api = methode.getAnnotation(ApiRest.class);
+                boolean apiRest = api != null && api.json();
+
+                urlMappings.put(cle, new UrlMethode(clazz.getName(), methode.getName(), apiRest));
             }
         }
     }
 
-    public void trouverChemin(ModelAndView mv,
-            HttpServletRequest request,
+    // ===================== Sprint 2 / 3 bis / 4 =====================
+    // Trouve l'UrlMethode liée à l'url + méthode HTTP (404 si introuvable)
+    public UrlMethode trouverUrlMethode(String url, String httpMethode,
+            Map<UtilMethode, UrlMethode> urlMappings) throws Exception {
+
+        if (urlMappings == null) {
+            throw new Exception("Erreur : urlMappings est null. Verifiez que ListenerDemarrage est declare.");
+        }
+
+        UrlMethode urlMethode = urlMappings.get(new UtilMethode(url, httpMethode));
+        if (urlMethode == null) {
+            // Sprint 2 : url non trouvée => 404 + liste de toutes les urls disponibles
+            throw new FileNotFoundException("Erreur 404 : '" + url + "' [" + httpMethode
+                    + "] non trouvee. URLs disponibles : " + listerUrls(urlMappings));
+        }
+        return urlMethode;
+    }
+
+    // Invoque la méthode et retourne sa valeur de retour
+    public Object lireMethodeAndClass(UrlMethode urlMethode) throws Exception {
+        Class<?> classMethod = Class.forName(urlMethode.getClassName());
+        Method methode = classMethod.getMethod(urlMethode.getMethodeName());
+        Object instance = classMethod.getDeclaredConstructor().newInstance();
+        return methode.invoke(instance);
+    }
+
+    public List<String> listerUrls(Map<UtilMethode, UrlMethode> urlMappings) {
+        List<String> urls = new ArrayList<>();
+        for (UtilMethode u : urlMappings.keySet()) {
+            urls.add("[" + u.getUrl() + ", " + u.getMethode() + "]");
+        }
+        return urls;
+    }
+
+    // ===================== Sprint 5 =====================
+    // Envoie le model dans la requête puis forward vers la vue (prefix + vue + suffix)
+    public void trouverChemin(ModelAndView mv, HttpServletRequest request,
             HttpServletResponse response, String prefix, String suffix)
             throws ServletException, IOException {
 
-        Map<String, Object> model = mv.getModel();
-        if (model != null) {
-            for (Map.Entry<String, Object> entry : model.entrySet()) {
-                request.setAttribute(entry.getKey(), entry.getValue());
-            }
+        for (Map.Entry<String, Object> entry : mv.getModel().entrySet()) {
+            request.setAttribute(entry.getKey(), entry.getValue());
         }
 
         String fullPath = prefix + mv.getViewName() + suffix;
-
         RequestDispatcher dispatcher = request.getRequestDispatcher(fullPath);
         dispatcher.forward(request, response);
     }
-    
+
+    // ===================== Sprint 6 : objet -> JSON =====================
+    public String toJson(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof String || value instanceof Character || value instanceof Enum) {
+            return "\"" + escapeJson(value.toString()) + "\"";
+        }
+        if (value instanceof Number || value instanceof Boolean) {
+            return value.toString();
+        }
+        if (value instanceof Map) {
+            StringBuilder json = new StringBuilder("{");
+            boolean first = true;
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+                if (!first) {
+                    json.append(",");
+                }
+                json.append(toJson(String.valueOf(entry.getKey())));
+                json.append(":");
+                json.append(toJson(entry.getValue()));
+                first = false;
+            }
+            return json.append("}").toString();
+        }
+        if (value instanceof Iterable) {
+            StringBuilder json = new StringBuilder("[");
+            boolean first = true;
+            for (Object element : (Iterable<?>) value) {
+                if (!first) {
+                    json.append(",");
+                }
+                json.append(toJson(element));
+                first = false;
+            }
+            return json.append("]").toString();
+        }
+        if (value.getClass().isArray()) {
+            StringBuilder json = new StringBuilder("[");
+            for (int i = 0; i < Array.getLength(value); i++) {
+                if (i > 0) {
+                    json.append(",");
+                }
+                json.append(toJson(Array.get(value, i)));
+            }
+            return json.append("]").toString();
+        }
+        return objetToJson(value);
+    }
+
+    // Objet du développeur : on lit ses attributs (nom -> valeur)
+    private String objetToJson(Object obj) {
+        Class<?> clazz = obj.getClass();
+        if (clazz.getName().startsWith("java.")) {
+            // Date, LocalDate, ... : simple texte
+            return toJson(obj.toString());
+        }
+        StringBuilder json = new StringBuilder("{");
+        boolean first = true;
+        try {
+            for (Field champ : clazz.getDeclaredFields()) {
+                int mod = champ.getModifiers();
+                if (Modifier.isStatic(mod) || Modifier.isTransient(mod) || champ.isSynthetic()) {
+                    continue;
+                }
+                champ.setAccessible(true);
+                if (!first) {
+                    json.append(",");
+                }
+                json.append(toJson(champ.getName()));
+                json.append(":");
+                json.append(toJson(champ.get(obj)));
+                first = false;
+            }
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("Erreur toJson : " + e.getMessage(), e);
+        }
+        return json.append("}").toString();
+    }
+
+    private String escapeJson(String value) {
+        return value.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+    }
 }

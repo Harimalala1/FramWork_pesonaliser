@@ -8,7 +8,7 @@ public class UtilMethode {
 
     public UtilMethode(String url, String methode) {
         this.url = url;
-        this.methode = methode;
+        this.methode = methode == null ? null : methode.toUpperCase();
     }
 
     public String getUrl() {
@@ -24,7 +24,7 @@ public class UtilMethode {
     }
 
     public void setMethode(String methode) {
-        this.methode = methode;
+        this.methode = methode == null ? null : methode.toUpperCase();
     }
 
     @Override
@@ -34,7 +34,7 @@ public class UtilMethode {
         if (obj == null || getClass() != obj.getClass())
             return false;
         UtilMethode that = (UtilMethode) obj;
-        return this.url.equals(that.url) && this.methode.equals(that.methode);
+        return Objects.equals(url, that.url) && Objects.equals(methode, that.methode);
     }
 
     @Override

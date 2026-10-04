@@ -1,173 +1,104 @@
 package controller;
 
-import java.io.*;
-import java.lang.reflect.Array;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Map;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-import service.HandlerResult;
+import definition.Controller;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import service.ModelAndView;
+import service.Niveau;
+import service.UrlMethode;
+import service.UtilMethode;
 import service.Utilitaire;
-import definition.*;
 
-@Controller
+@WebServlet(urlPatterns = "/", loadOnStartup = 1)
 public class FrontServletController extends HttpServlet {
-    //pas utiliser pour l'instant
-    // private List<String> classNameController;
-    // public void init() throws ServletException {
-    // String packageName = this.getInitParameter("packageName");
 
-    // try {
-    // classNameController =
-    // utilitaire.getAllClassesWithAnnotationInPackage(packageName,
-    // Controller.class);
-    // } catch (Exception e) {
-    // throw new ServletException(e);
-    // }
-    // }
+    private final Utilitaire utilitaire = new Utilitaire();
+    private List<String> listController;
 
-    private Utilitaire utilitaire = new Utilitaire();
-
-    public void proccessRequest(HttpServletRequest req, HttpServletResponse res) throws Exception {
-        res.setContentType("text/plain;charset=UTF-8");
-
-        String path = req.getRequestURI().toString();
-        PrintWriter out = res.getWriter();
-
-        String contextPath = req.getContextPath();
-        String chemin = path.substring(contextPath.length() + 1);
-
-        String packageName = this.getInitParameter("packageName");
-
-        Map<service.UtilMethode, service.UrlMethode> urlMappings = (Map<service.UtilMethode, service.UrlMethode>) getServletContext()
-                .getAttribute("urlMappings");
-        if (urlMappings == null) {
-            throw new Exception("Erreur : urlMappings est null...");
+    // Sprint 1 : liste des classes annotées @Controller
+    @Override
+    public void init() throws ServletException {
+        String packageName = (String) getServletContext().getAttribute("packageController");
+        try {
+            listController = utilitaire.getAllClassesWithAnnotationInPackage(
+                    packageName, Controller.class, Niveau.CLASSE);
+        } catch (Exception e) {
+            throw new ServletException(e);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void processRequest(HttpServletRequest req, HttpServletResponse res)
+            throws ServletException, IOException {
+
+        // ex : "/emp/list" (avec le "/" initial, comme dans @UrlMapping)
+        String chemin = req.getRequestURI().substring(req.getContextPath().length());
+        if (chemin.isEmpty()) {
+            chemin = "/";
+        }
+
+        Map<UtilMethode, UrlMethode> urlMappings = (Map<UtilMethode, UrlMethode>) getServletContext()
+                .getAttribute("urlMappings");
         String prefix = (String) getServletContext().getAttribute("prefix");
         String suffix = (String) getServletContext().getAttribute("suffix");
 
         try {
-            // Object result = utilitaire.lireMethodeAndClass(...);
-            HandlerResult handlerResult = (HandlerResult) utilitaire.lireMethodeAndClass(
-                    chemin,
-                    req.getMethod(),
-                    packageName,
-                    urlMappings);
+            UrlMethode urlMethode = utilitaire.trouverUrlMethode(chemin, req.getMethod(), urlMappings);
+            Object result = utilitaire.lireMethodeAndClass(urlMethode);
 
-            Object result = handlerResult.getValue();
-
-            if (handlerResult.isWebApi()) {
+            // Sprint 6 : on teste @ApiRest AVANT le dispatch
+            if (urlMethode.isApiRest()) {
                 res.setContentType("application/json;charset=UTF-8");
-                out.println(toJson(result));
+                PrintWriter out = res.getWriter();
+                if (result instanceof String) {
+                    out.print(result);                      // le developpeur a deja fait le JSON
+                } else {
+                    out.print(utilitaire.toJson(result));   // le framework transforme en JSON
+                }
+                out.flush();
                 return;
             }
 
-            ModelAndView mv;
+            // Sinon : dispatch vers la vue
             if (result instanceof ModelAndView) {
-                mv = (ModelAndView) result;
+                utilitaire.trouverChemin((ModelAndView) result, req, res, prefix, suffix);
             } else if (result instanceof String) {
-                mv = new ModelAndView((String) result);
+                utilitaire.trouverChemin(new ModelAndView((String) result), req, res, prefix, suffix);
             } else {
-                throw new ServletException("Type de retour non supporté : " + result);
+                // Sprint 3 bis : on affiche simplement que la méthode a été appelée
+                res.setContentType("text/plain;charset=UTF-8");
+                res.getWriter().println("Methode appelee pour '" + chemin + "' [" + req.getMethod() + "]"
+                        + (result != null ? " -> " + result : ""));
             }
-
-            utilitaire.trouverChemin(mv, req, res, prefix, suffix);
+        } catch (FileNotFoundException e) {
+            // Sprint 2 : 404 + liste des urls disponibles
+            res.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            res.setContentType("text/plain;charset=UTF-8");
+            PrintWriter out = res.getWriter();
+            out.println(e.getMessage());
+            out.println("Controllers : " + listController);
         } catch (Exception e) {
             e.printStackTrace();
-            out.println("Resultat de l'url : " + e.getMessage());
+            res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.toString());
         }
-
-        // for (String className : classNameController) {
-        // out.println("Class : " + className);
-        // }
-
-        // List<String> classNameControllerFromListener = (List<String>)
-        // getServletContext()
-        // .getAttribute("classNameController");
-
-        // if (classNameControllerFromListener == null) {
-        // out.println("Class from listener is null");
-        // } else {
-        // for (String className : classNameControllerFromListener) {
-        // out.println("Class from listener : " + className);
-        // }
-        // }
     }
-    
-    // sprint0
+
+    @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-        try {
-            proccessRequest(req, res);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        processRequest(req, res);
     }
 
+    @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-        try {
-            proccessRequest(req, res);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private String toJson(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value instanceof String || value instanceof Character) {
-            return "\"" + escapeJson(value.toString()) + "\"";
-        }
-        if (value instanceof Number || value instanceof Boolean) {
-            return value.toString();
-        }
-        if (value instanceof Map<?, ?> map) {
-            StringBuilder json = new StringBuilder("{");
-            boolean first = true;
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (!first) {
-                    json.append(",");
-                }
-                json.append(toJson(entry.getKey().toString()));
-                json.append(":");
-                json.append(toJson(entry.getValue()));
-                first = false;
-            }
-            return json.append("}").toString();
-        }
-        if (value instanceof Iterable<?> iterable) {
-            StringBuilder json = new StringBuilder("[");
-            boolean first = true;
-            for (Object element : iterable) {
-                if (!first) {
-                    json.append(",");
-                }
-                json.append(toJson(element));
-                first = false;
-            }
-            return json.append("]").toString();
-        }
-        if (value.getClass().isArray()) {
-            StringBuilder json = new StringBuilder("[");
-            for (int index = 0; index < Array.getLength(value); index++) {
-                if (index > 0) {
-                    json.append(",");
-                }
-                json.append(toJson(Array.get(value, index)));
-            }
-            return json.append("]").toString();
-        }
-        return toJson(value.toString());
-    }
-
-    private String escapeJson(String value) {
-        return value.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+        processRequest(req, res);
     }
 }

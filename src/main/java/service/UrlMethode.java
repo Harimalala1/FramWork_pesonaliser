@@ -1,22 +1,15 @@
 package service;
 
 public class UrlMethode {
-    private String className;
+    private String className;   // nom complet de la classe (package inclus)
     private String methodeName;
-    private boolean webApi;
+    private boolean apiRest;    // Sprint 6 : true si la methode a @ApiRest(json = true)
 
-    public UrlMethode(String className, String methodeName, boolean webApi) {
+    public UrlMethode(String className, String methodeName, boolean apiRest) {
         this.className = className;
         this.methodeName = methodeName;
-        this.webApi = webApi;
+        this.apiRest = apiRest;
     }
-
-    /*
-    public UrlMethode(String className, String methodeName) {
-        this.className = className;
-        this.methodeName = methodeName;
-    }
-    */
 
     public String getClassName() {
         return className;
@@ -26,7 +19,7 @@ public class UrlMethode {
         return methodeName;
     }
 
-    public boolean isWebApi() {
-        return webApi;
+    public boolean isApiRest() {
+        return apiRest;
     }
 }

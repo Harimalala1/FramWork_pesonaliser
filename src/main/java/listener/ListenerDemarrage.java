@@ -1,54 +1,45 @@
 package listener;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
+import jakarta.servlet.annotation.WebListener;
 import service.UrlMethode;
 import service.UtilMethode;
 import service.Utilitaire;
-import definition.*;
 
+@WebListener
 public class ListenerDemarrage implements ServletContextListener {
 
-    private Utilitaire utilitaire = new Utilitaire();
-    private List<String> classNameController;
+    // Package où se trouvent les controllers (à adapter à ton projet)
+    private static final String PACKAGE_CONTROLLER = "developpeur";
+
+    private final Utilitaire utilitaire = new Utilitaire();
 
     @Override
     public void contextInitialized(ServletContextEvent servletContextEvent) {
         ServletContext context = servletContextEvent.getServletContext();
-        String packageName = context.getInitParameter("packageName");
+        String packageName = PACKAGE_CONTROLLER;
+        context.setAttribute("packageController", packageName);
 
-        try {
-            classNameController = utilitaire.getAllClassesWithAnnotationInPackage(packageName, Controller.class);
-            context.setAttribute("classNameController", classNameController);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
+        // Sprint 4 : si une exception survient, l'application ne démarre pas
         Map<UtilMethode, UrlMethode> urlMappings = new HashMap<>();
         try {
             utilitaire.getAllUrlMappingsWithUtilMethode(packageName, urlMappings);
-            context.setAttribute("urlMappings", urlMappings);
         } catch (Exception e) {
             throw new RuntimeException(
-                    "Erreur d'initialisation : urlMappings non initialisé. Cause : " + e.getMessage(), e);
+                    "Erreur d'initialisation : urlMappings non initialise. Cause : " + e.getMessage(), e);
         }
+        context.setAttribute("urlMappings", urlMappings);
 
+        // Sprint 5 : prefixe et suffixe de la vue
         String prefix = context.getInitParameter("prefix");
         String suffix = context.getInitParameter("suffix");
-
-        if(prefix == null) {
-            prefix = "/WEB-INF/template/";
-        }
-        if(suffix == null) {
-            suffix = ".jsp";
-        }
-
-        context.setAttribute("prefix", prefix);
-        context.setAttribute("suffix", suffix);
+        context.setAttribute("prefix", prefix != null ? prefix : "/WEB-INF/template/");
+        context.setAttribute("suffix", suffix != null ? suffix : ".jsp");
     }
 
     @Override
