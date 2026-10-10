@@ -125,13 +125,75 @@ public class Utilitaire {
         return urlMethode;
     }
 
-    // Invoque la méthode et retourne sa valeur de retour
-    public Object lireMethodeAndClass(UrlMethode urlMethode) throws Exception {
-        Class<?> classMethod = Class.forName(urlMethode.getClassName());
-        Method methode = classMethod.getMethod(urlMethode.getMethodeName());
+    // Invoque la méthode et retourne sa valeur de retour 
+    //ancien lireMethodeAndClass sans paramètre HttpServletRequest
+    //
+    // public Object lireMethodeAndClass(UrlMethode urlMethode) throws Exception {
+    //     Class<?> classMethod = Class.forName(urlMethode.getClassName());
+    //     Method methode = classMethod.getMethod(urlMethode.getMethodeName());
+    //     Object instance = classMethod.getDeclaredConstructor().newInstance();
+    //     return methode.invoke(instance);
+    // }
+
+    
+    public Object lireMethodeAndClass(
+        UrlMethode urlMethode,
+        HttpServletRequest req) throws Exception {
+
+        Class<?> classMethod =
+                Class.forName(urlMethode.getClassName());
+
         Object instance = classMethod.getDeclaredConstructor().newInstance();
-        return methode.invoke(instance);
+
+        // Récupérer les paramètres de la méthode
+        Method methode = null;
+
+        for (Method m : classMethod.getMethods()) {
+            if (m.getName().equals(urlMethode.getMethodeName())) {
+                methode = m;
+                break;
+            }
+        }
+        if (methode == null) {
+            throw new NoSuchMethodException(urlMethode.getMethodeName());
+        }
+            // Préparer les arguments
+            Class<?>[] types = methode.getParameterTypes();
+            Object[] arguments = new Object[types.length];
+
+            for (int i = 0; i < types.length; i++) {
+                // String nomParametre = methode.getParameters()[i].getName();
+                // String valeur = req.getParameter(nomParametre);
+
+                // System.out.println("Paramètre Java : " + nomParametre);
+                // System.out.println("Valeur reçue : " + valeur);
+
+                
+            String nomParametre = methode.getParameters()[i].getName();
+            String valeur = req.getParameter(nomParametre);
+
+            // System.out.println("URL : " + req.getRequestURI());
+            // System.out.println("Paramètre recherché : " + nomParametre);
+            // System.out.println("Valeur reçue : " + valeur);
+
+            if (valeur == null) {
+                throw new IllegalArgumentException(
+                    "Paramètre absent du formulaire : " + nomParametre
+                );
+            }
+                if (types[i] == String.class) {
+                    arguments[i] = valeur;
+                } else if (types[i] == int.class
+                        || types[i] == Integer.class) {
+                    arguments[i] = Integer.parseInt(valeur);
+                } else {
+                    throw new IllegalArgumentException(
+                            "Type non supporté : " + types[i]);
+                }
+            }
+        return methode.invoke(instance, arguments);
     }
+
 
     public List<String> listerUrls(Map<UtilMethode, UrlMethode> urlMappings) {
         List<String> urls = new ArrayList<>();

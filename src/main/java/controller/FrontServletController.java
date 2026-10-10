@@ -53,7 +53,8 @@ public class FrontServletController extends HttpServlet {
 
         try {
             UrlMethode urlMethode = utilitaire.trouverUrlMethode(chemin, req.getMethod(), urlMappings);
-            Object result = utilitaire.lireMethodeAndClass(urlMethode);
+            // Object result = utilitaire.lireMethodeAndClass(urlMethode);
+            Object result = utilitaire.lireMethodeAndClass(urlMethode, req);
 
             // Sprint 6 : on teste @ApiRest AVANT le dispatch
             if (urlMethode.isApiRest()) {
