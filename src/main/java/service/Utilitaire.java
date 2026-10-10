@@ -165,33 +165,78 @@ public class Utilitaire {
                 // String nomParametre = methode.getParameters()[i].getName();
                 // String valeur = req.getParameter(nomParametre);
 
-                // System.out.println("Paramètre Java : " + nomParametre);
-                // System.out.println("Valeur reçue : " + valeur);
-
-                
+    
             String nomParametre = methode.getParameters()[i].getName();
             String valeur = req.getParameter(nomParametre);
+            // if (valeur == null) {
+            //     throw new IllegalArgumentException(
+            //         "Paramètre absent du formulaire : " + nomParametre
+            //     );
+            // }
+                if (types[i] == String.class) {
+                    if (valeur == null) {
+                        throw new IllegalArgumentException(
+                            "Paramètre absent du formulaire : " + nomParametre
+                        );
+                    }
+                    arguments[i] = valeur;
 
-            // System.out.println("URL : " + req.getRequestURI());
-            // System.out.println("Paramètre recherché : " + nomParametre);
-            // System.out.println("Valeur reçue : " + valeur);
+                } else if (types[i] == int.class
+                        || types[i] == Integer.class) {
+                    if (valeur == null) {
+                        throw new IllegalArgumentException(
+                            "Paramètre absent du formulaire : " + nomParametre
+                        );
+                    }
+                    arguments[i] = Integer.parseInt(valeur);
 
-            if (valeur == null) {
-                throw new IllegalArgumentException(
-                    "Paramètre absent du formulaire : " + nomParametre
-                );
-            }
+                } else {
+                    arguments[i] = remplirObjet(types[i], req);
+                }
+                
                 if (types[i] == String.class) {
                     arguments[i] = valeur;
                 } else if (types[i] == int.class
                         || types[i] == Integer.class) {
                     arguments[i] = Integer.parseInt(valeur);
                 } else {
-                    throw new IllegalArgumentException(
-                            "Type non supporté : " + types[i]);
+                    // throw new IllegalArgumentException(
+                    //         "Type non supporté : " + types[i]);
+                        // Sprint 7 bis : binding vers un objet Java
+                        arguments[i] = remplirObjet(types[i], req);
                 }
             }
         return methode.invoke(instance, arguments);
+    }
+    //sprint 7 bis : argument mivadika objet exemple(eleve) pour la clase developpeur
+    private Object remplirObjet(Class<?> classe, HttpServletRequest req)
+            throws Exception {
+
+        Object objet = classe.getDeclaredConstructor().newInstance();
+
+        for (java.lang.reflect.Field champ : classe.getDeclaredFields()) {
+            String nom = champ.getName();
+            String valeur = req.getParameter(nom);
+
+            if (valeur == null) {
+                continue;
+            }
+
+            champ.setAccessible(true);
+
+            if (champ.getType() == String.class) {
+                champ.set(objet, valeur);
+            } else if (champ.getType() == int.class
+                    || champ.getType() == Integer.class) {
+                champ.set(objet, Integer.parseInt(valeur));
+            } else {
+                throw new IllegalArgumentException(
+                    "Type d'attribut non supporté : " + champ.getType()
+                );
+            }
+        }
+
+        return objet;
     }
 
 
