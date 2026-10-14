@@ -165,13 +165,13 @@ public class Utilitaire {
                 // String valeur = req.getParameter(nomParametre);
 
     
-            String nomParametre = methode.getParameters()[i].getName();
-            String valeur = req.getParameter(nomParametre);
-            // if (valeur == null) {
-            //     throw new IllegalArgumentException(
-            //         "Paramètre absent du formulaire : " + nomParametre
-            //     );
-            // }
+                String nomParametre = methode.getParameters()[i].getName();
+                String valeur = req.getParameter(nomParametre);
+                // if (valeur == null) {
+                //     throw new IllegalArgumentException(
+                //         "Paramètre absent du formulaire : " + nomParametre
+                //     );
+                // }
                 if (types[i] == String.class) {
                     if (valeur == null) {
                         throw new IllegalArgumentException("Paramètre absent du formulaire : " + nomParametre);
