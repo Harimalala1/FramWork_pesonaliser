@@ -140,8 +140,7 @@ public class Utilitaire {
         UrlMethode urlMethode,
         HttpServletRequest req) throws Exception {
 
-        Class<?> classMethod =
-                Class.forName(urlMethode.getClassName());
+        Class<?> classMethod = Class.forName(urlMethode.getClassName());
 
         Object instance = classMethod.getDeclaredConstructor().newInstance();
 
@@ -175,18 +174,13 @@ public class Utilitaire {
             // }
                 if (types[i] == String.class) {
                     if (valeur == null) {
-                        throw new IllegalArgumentException(
-                            "Paramètre absent du formulaire : " + nomParametre
-                        );
+                        throw new IllegalArgumentException("Paramètre absent du formulaire : " + nomParametre);
                     }
                     arguments[i] = valeur;
 
-                } else if (types[i] == int.class
-                        || types[i] == Integer.class) {
+                } else if (types[i] == int.class || types[i] == Integer.class) {
                     if (valeur == null) {
-                        throw new IllegalArgumentException(
-                            "Paramètre absent du formulaire : " + nomParametre
-                        );
+                        throw new IllegalArgumentException("Paramètre absent du formulaire : " + nomParametre);
                     }
                     arguments[i] = Integer.parseInt(valeur);
 
@@ -196,12 +190,11 @@ public class Utilitaire {
                 
                 if (types[i] == String.class) {
                     arguments[i] = valeur;
-                } else if (types[i] == int.class
-                        || types[i] == Integer.class) {
+                } else if (types[i] == int.class || types[i] == Integer.class) {
                     arguments[i] = Integer.parseInt(valeur);
                 } else {
                     // throw new IllegalArgumentException(
-                    //         "Type non supporté : " + types[i]);
+                    //         "Type non supporté : " + types[i]);vv
                         // Sprint 7 bis : binding vers un objet Java
                         arguments[i] = remplirObjet(types[i], req);
                 }
