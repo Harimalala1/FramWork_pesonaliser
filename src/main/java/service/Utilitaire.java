@@ -219,12 +219,10 @@ public class Utilitaire {
 
             if (champ.getType() == String.class) {
                 champ.set(objet, valeur);
-            } else if (champ.getType() == int.class
-                    || champ.getType() == Integer.class) {
+            } else if (champ.getType() == int.class || champ.getType() == Integer.class) {
                 champ.set(objet, Integer.parseInt(valeur));
             } else {
-                throw new IllegalArgumentException(
-                    "Type d'attribut non supporté : " + champ.getType()
+                throw new IllegalArgumentException("Type d'attribut non supporté : " + champ.getType()
                 );
             }
         }
