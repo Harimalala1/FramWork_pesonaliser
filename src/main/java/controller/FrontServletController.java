@@ -1,101 +1,107 @@
 package controller;
 
-import java.io.*;
-import java.net.URI;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Map;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
+import definition.Controller;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import service.ModelAndView;
+import service.Niveau;
+import service.UrlMethode;
+import service.UtilMethode;
 import service.Utilitaire;
-import definition.*;
+import jakarta.servlet.annotation.MultipartConfig;
 
-@Controller
+@WebServlet(urlPatterns = "/", loadOnStartup = 1)
+@MultipartConfig
 public class FrontServletController extends HttpServlet {
 
-    // private List<String> classNameController;
-    private Utilitaire utilitaire = new Utilitaire();
+    private final Utilitaire utilitaire = new Utilitaire();
+    private List<String> listController;
 
-    // public void init() throws ServletException {
-    // String packageName = this.getInitParameter("packageName");
-
-    // try {
-    // classNameController =
-    // utilitaire.getAllClassesWithAnnotationInPackage(packageName,
-    // Controller.class);
-    // } catch (Exception e) {
-    // throw new ServletException(e);
-    // }
-    // }
-
-    public void proccessRequest(HttpServletRequest req, HttpServletResponse res) throws Exception {
-        res.setContentType("text/plain;charset=UTF-8");
-
-        String path = req.getRequestURI().toString();
-        PrintWriter out = res.getWriter();
-
-        String contextPath = req.getContextPath();
-        String chemin = path.substring(contextPath.length() + 1);
-
-        String packageName = this.getInitParameter("packageName");
-
-        Map<service.UtilMethode, service.UrlMethode> urlMappings = (Map<service.UtilMethode, service.UrlMethode>) getServletContext()
-                .getAttribute("urlMappings");
-        if (urlMappings == null) {
-            throw new Exception("Erreur : urlMappings est null...");
+    // Sprint 1 : liste des classes annotées @Controller
+    @Override
+    public void init() throws ServletException {
+        String packageName = (String) getServletContext().getAttribute("packageController");
+        try {
+            listController = utilitaire.getAllClassesWithAnnotationInPackage(
+                    packageName, Controller.class, Niveau.CLASSE);
+        } catch (Exception e) {
+            throw new ServletException(e);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void processRequest(HttpServletRequest req, HttpServletResponse res)
+            throws ServletException, IOException {
+
+        // ex : "/emp/list" (avec le "/" initial, comme dans @UrlMapping)
+        String chemin = req.getRequestURI().substring(req.getContextPath().length());
+        if (chemin.isEmpty()) {
+            chemin = "/";
+        }
+
+        Map<UtilMethode, UrlMethode> urlMappings = (Map<UtilMethode, UrlMethode>) getServletContext()
+                .getAttribute("urlMappings");
         String prefix = (String) getServletContext().getAttribute("prefix");
         String suffix = (String) getServletContext().getAttribute("suffix");
 
         try {
-            Object result = utilitaire.lireMethodeAndClass(chemin, req.getMethod(), packageName, urlMappings);
+            UrlMethode urlMethode = utilitaire.trouverUrlMethode(chemin, req.getMethod(), urlMappings);
+            // Object result = utilitaire.lireMethodeAndClass(urlMethode);
+            Object result = utilitaire.lireMethodeAndClass(urlMethode, req);
 
-            ModelAndView mv;
-            if (result instanceof ModelAndView) {
-                mv = (ModelAndView) result;
-            } else if (result instanceof String) {
-                mv = new ModelAndView((String) result);
-            } else {
-                throw new ServletException("Type de retour non supporté : " + result);
+            // Sprint 6 : on teste @ApiRest AVANT le dispatch
+            if (urlMethode.isApiRest()) {
+                res.setContentType("application/json;charset=UTF-8");
+                PrintWriter out = res.getWriter();
+                if (result instanceof String) {
+                    out.print(result);                      // le developpeur a deja fait le JSON
+                } else {
+                    out.print(utilitaire.toJson(result));   // le framework transforme en JSON
+                }
+                out.flush();
+                return;
             }
 
-            utilitaire.trouverChemin(mv, req, res, prefix, suffix);
+            // Sinon : dispatch vers la vue
+            if (result instanceof ModelAndView) {
+                utilitaire.trouverChemin((ModelAndView) result, req, res, prefix, suffix);
+            } else if (result instanceof String) {
+                utilitaire.trouverChemin(new ModelAndView((String) result), req, res, prefix, suffix);
+            } else {
+                // Sprint 3 bis : on affiche simplement que la méthode a été appelée
+                res.setContentType("text/plain;charset=UTF-8");
+                res.getWriter().println("Methode appelee pour '" + chemin + "' [" + req.getMethod() + "]"
+                        + (result != null ? " -> " + result : ""));
+            }
+        } catch (FileNotFoundException e) {
+            // Sprint 2 : 404 + liste des urls disponibles
+            res.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            res.setContentType("text/plain;charset=UTF-8");
+            PrintWriter out = res.getWriter();
+            out.println(e.getMessage());
+            out.println("Controllers : " + listController);
         } catch (Exception e) {
             e.printStackTrace();
-            out.println("Resultat de l'url : " + e.getMessage());
+            res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.toString());
         }
-
-        // for (String className : classNameController) {
-        // out.println("Class : " + className);
-        // }
-
-        // List<String> classNameControllerFromListener = (List<String>)
-        // getServletContext()
-        // .getAttribute("classNameController");
-
-        // if (classNameControllerFromListener == null) {
-        // out.println("Class from listener is null");
-        // } else {
-        // for (String className : classNameControllerFromListener) {
-        // out.println("Class from listener : " + className);
-        // }
-        // }
     }
 
+    @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-        try {
-            proccessRequest(req, res);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        processRequest(req, res);
     }
 
+    @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-        try {
-            proccessRequest(req, res);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        processRequest(req, res);
     }
 }

@@ -1,4 +1,5 @@
 package service;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,11 +29,11 @@ public class ModelAndView {
         return viewName;
     }
 
-    public void addObject(String key, Object value) {
-        model.put(key, value);
-    }
-
     public void setViewName(String viewName) {
         this.viewName = viewName;
+    }
+
+    public void addObject(String key, Object value) {
+        model.put(key, value);
     }
 }

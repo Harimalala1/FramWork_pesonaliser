@@ -51,4 +51,3 @@ on creer un emethode que le tomcat appel avant le chargement
 
 ## srpint5 
 dans init ajouter 2 paramettre prefix et sufix
- 
