@@ -17,8 +17,10 @@ import service.Niveau;
 import service.UrlMethode;
 import service.UtilMethode;
 import service.Utilitaire;
+import jakarta.servlet.annotation.MultipartConfig;
 
 @WebServlet(urlPatterns = "/", loadOnStartup = 1)
+@MultipartConfig
 public class FrontServletController extends HttpServlet {
 
     private final Utilitaire utilitaire = new Utilitaire();

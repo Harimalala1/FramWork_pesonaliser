@@ -20,6 +20,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.util.LinkedHashMap;
+import jakarta.servlet.http.Part;
+
 public class Utilitaire {
 
     // ===================== Sprint 1 =====================
@@ -136,9 +141,10 @@ public class Utilitaire {
     // }
 
     
+
     public Object lireMethodeAndClass(
-        UrlMethode urlMethode,
-        HttpServletRequest req) throws Exception {
+            UrlMethode urlMethode,
+            HttpServletRequest req) throws Exception {
 
         Class<?> classMethod = Class.forName(urlMethode.getClassName());
 
@@ -153,54 +159,82 @@ public class Utilitaire {
                 break;
             }
         }
+
         if (methode == null) {
             throw new NoSuchMethodException(urlMethode.getMethodeName());
         }
-            // Préparer les arguments
-            Class<?>[] types = methode.getParameterTypes();
-            Object[] arguments = new Object[types.length];
 
-            for (int i = 0; i < types.length; i++) {
-                // String nomParametre = methode.getParameters()[i].getName();
-                // String valeur = req.getParameter(nomParametre);
+        // Préparer les arguments
+        Class<?>[] types = methode.getParameterTypes();
+        Object[] arguments = new Object[types.length];
 
-    
-                String nomParametre = methode.getParameters()[i].getName();
-                String valeur = req.getParameter(nomParametre);
-                // if (valeur == null) {
-                //     throw new IllegalArgumentException(
-                //         "Paramètre absent du formulaire : " + nomParametre
-                //     );
-                // }
-                if (types[i] == String.class) {
-                    if (valeur == null) {
-                        throw new IllegalArgumentException("Paramètre absent du formulaire : " + nomParametre);
-                    }
-                    arguments[i] = valeur;
+        for (int i = 0; i < types.length; i++) {
 
-                } else if (types[i] == int.class || types[i] == Integer.class) {
-                    if (valeur == null) {
-                        throw new IllegalArgumentException("Paramètre absent du formulaire : " + nomParametre);
-                    }
-                    arguments[i] = Integer.parseInt(valeur);
+            // String nomParametre = methode.getParameters()[i].getName();
+            // String valeur = req.getParameter(nomParametre);
 
-                } else {
-                    arguments[i] = remplirObjet(types[i], req);
+            String nomParametre = methode.getParameters()[i].getName();
+            String valeur = req.getParameter(nomParametre);
+
+            // if (valeur == null) {
+            //     throw new IllegalArgumentException(
+            //         "Paramètre absent du formulaire : " + nomParametre
+            //     );
+            // }
+
+            if (types[i] == String.class) {
+
+                if (valeur == null) {
+                    throw new IllegalArgumentException(
+                        "Paramètre absent du formulaire : " + nomParametre
+                    );
                 }
-                
-                if (types[i] == String.class) {
-                    arguments[i] = valeur;
-                } else if (types[i] == int.class || types[i] == Integer.class) {
-                    arguments[i] = Integer.parseInt(valeur);
-                } else {
-                    // throw new IllegalArgumentException(
-                    //         "Type non supporté : " + types[i]);vv
-                        // Sprint 7 bis : binding vers un objet Java
-                    arguments[i] = remplirObjet(types[i], req);
+
+                arguments[i] = valeur;
+
+            } else if (types[i] == int.class || types[i] == Integer.class) {
+
+                if (valeur == null) {
+                    throw new IllegalArgumentException(
+                        "Paramètre absent du formulaire : " + nomParametre
+                    );
                 }
+
+                arguments[i] = Integer.parseInt(valeur);
+
+            } else if (Map.class.isAssignableFrom(types[i])) {
+
+                // Sprint 8 : binding des fichiers uploadés
+                arguments[i] = lireFichiers(req);
+
+            } else {
+
+                // throw new IllegalArgumentException(
+                //         "Type non supporté : " + types[i]);vv
+                // Sprint 7 bis : binding vers un objet Java
+                arguments[i] = remplirObjet(types[i], req);
             }
+
+            if (types[i] == String.class) {
+                arguments[i] = valeur;
+
+            } else if (types[i] == int.class || types[i] == Integer.class) {
+                arguments[i] = Integer.parseInt(valeur);
+
+            } else if (Map.class.isAssignableFrom(types[i])) {
+
+                // Sprint 8 : récupération des fichiers
+                arguments[i] = lireFichiers(req);
+
+            } else {
+                // Sprint 7 bis : binding vers un objet Java
+                arguments[i] = remplirObjet(types[i], req);
+            }
+        }
+
         return methode.invoke(instance, arguments);
     }
+
     //sprint 7 bis : argument mivadika objet exemple(eleve) pour la clase developpeur
     private Object remplirObjet(Class<?> classe, HttpServletRequest req)
             throws Exception {
@@ -341,4 +375,65 @@ public class Utilitaire {
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
     }
+
+    //sprint8
+
+    
+    private Map<String, MapFil> lireFichiers(
+            HttpServletRequest req) throws Exception {
+
+        Map<String, MapFil> fichiers = new LinkedHashMap<>();
+
+        String contentType = req.getContentType();
+
+        // Pas de formulaire multipart : aucun fichier à lire
+        if (contentType == null
+                || !contentType.toLowerCase().startsWith("multipart/form-data")) {
+            return fichiers;
+        }
+
+        for (Part part : req.getParts()) {
+
+            // Ignorer les champs ordinaires du formulaire
+            if (part.getSubmittedFileName() == null) {
+                continue;
+            }
+
+            String filename = part.getSubmittedFileName();
+
+            // Ignorer les champs de fichier laissés vides
+            if (filename == null || filename.isEmpty()) {
+                continue;
+            }
+
+            byte[] binaire;
+
+            try (InputStream input = part.getInputStream();
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+
+                byte[] buffer = new byte[8192];
+                int longueur;
+
+                while ((longueur = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, longueur);
+                }
+
+                binaire = output.toByteArray();
+            }
+
+            String type = part.getContentType();
+
+            MapFil mapFil = new MapFil(
+                filename,
+                type,
+                binaire
+            );
+
+            // La clé correspond au name du champ HTML
+            fichiers.put(part.getName(), mapFil);
+        }
+
+        return fichiers;
+    }
+
 }
