@@ -19,6 +19,9 @@ import service.UtilMethode;
 import service.Utilitaire;
 import jakarta.servlet.annotation.MultipartConfig;
 
+import java.util.HashMap;
+import jakarta.servlet.ServletContext;
+
 @WebServlet(urlPatterns = "/", loadOnStartup = 1)
 @MultipartConfig
 public class FrontServletController extends HttpServlet {
@@ -38,6 +41,44 @@ public class FrontServletController extends HttpServlet {
         }
     }
 
+    /**
+     * Sprint 9A :
+     * Récupère l'instance existante d'un contrôleur.
+     * Si elle n'existe pas,on la crée et on la conserve dans le ServletContext.
+     */
+    @SuppressWarnings("unchecked")
+    private Object getControllerInstance(String className) throws Exception {
+
+        ServletContext context = getServletContext();
+
+        Map<String, Object> controllerInstances =
+                (Map<String, Object>) context.getAttribute("controllerInstances");
+
+        if (controllerInstances == null) {
+            throw new IllegalStateException(
+                    "La Map controllerInstances n'est pas initialisée.");
+        }
+
+        // Une seule instance doit être créée par classe de contrôleur.
+        synchronized (controllerInstances) {
+
+            Object instance = controllerInstances.get(className);
+
+            if (instance == null) {
+                Class<?> controllerClass = Class.forName(className);
+
+                instance = controllerClass
+                        .getDeclaredConstructor()
+                        .newInstance();
+
+                controllerInstances.put(className, instance);
+            }
+
+            return instance;
+        }
+    }
+
+
     @SuppressWarnings("unchecked")
     private void processRequest(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
@@ -56,7 +97,13 @@ public class FrontServletController extends HttpServlet {
         try {
             UrlMethode urlMethode = utilitaire.trouverUrlMethode(chemin, req.getMethod(), urlMappings);
             // Object result = utilitaire.lireMethodeAndClass(urlMethode);
-            Object result = utilitaire.lireMethodeAndClass(urlMethode, req);
+            // Object result = utilitaire.lireMethodeAndClass(urlMethode, req);
+
+            // Sprint 9A : récupérer l'instance partagée du contrôleur
+            Object controller = getControllerInstance(urlMethode.getClassName());
+
+            // Exécuter l'action sur cette instance
+            Object result = utilitaire.lireMethodeAndClass(urlMethode, req, controller);
 
             // Sprint 6 : on teste @ApiRest AVANT le dispatch
             if (urlMethode.isApiRest()) {

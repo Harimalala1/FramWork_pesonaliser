@@ -129,7 +129,6 @@ public class Utilitaire {
         }
         return urlMethode;
     }
-
     // Invoque la méthode et retourne sa valeur de retour 
     //ancien lireMethodeAndClass sans paramètre HttpServletRequest
     //
@@ -140,17 +139,26 @@ public class Utilitaire {
     //     return methode.invoke(instance);
     // }
 
-    
 
-    public Object lireMethodeAndClass(
-            UrlMethode urlMethode,
-            HttpServletRequest req) throws Exception {
 
+    public Object lireMethodeAndClass(UrlMethode urlMethode, HttpServletRequest req,Object instance) throws Exception {
+        // Sprint 9A :
+        // Avant, le framework créait une nouvelle instance à chaque requête.
+        // Cette création est maintenant faite par FrontServletController,
+        // qui récupère ou crée l'instance partagée dans le ServletContext.
+
+        // ANCIEN CODE À NE PLUS UTILISER :
+        // Class<?> classMethod = Class.forName(urlMethode.getClassName());
+        // Object instance = classMethod.getDeclaredConstructor().newInstance();
+
+        // Vérifier que l'instance reçue correspond bien au contrôleur attendu.
         Class<?> classMethod = Class.forName(urlMethode.getClassName());
 
-        Object instance = classMethod.getDeclaredConstructor().newInstance();
+        if (instance == null || !classMethod.isInstance(instance)) {
+            throw new IllegalArgumentException("Instance du contrôleur invalide pour : " + urlMethode.getClassName());
+        }
 
-        // Récupérer les paramètres de la méthode
+        // Récupérer la méthode du contrôleur
         Method methode = null;
 
         for (Method m : classMethod.getMethods()) {
@@ -161,43 +169,38 @@ public class Utilitaire {
         }
 
         if (methode == null) {
-            throw new NoSuchMethodException(urlMethode.getMethodeName());
+            throw new NoSuchMethodException(
+                    urlMethode.getMethodeName());
         }
 
-        // Préparer les arguments
+        // Préparer les arguments de la méthode
         Class<?>[] types = methode.getParameterTypes();
         Object[] arguments = new Object[types.length];
 
         for (int i = 0; i < types.length; i++) {
 
-            // String nomParametre = methode.getParameters()[i].getName();
-            // String valeur = req.getParameter(nomParametre);
-
             String nomParametre = methode.getParameters()[i].getName();
             String valeur = req.getParameter(nomParametre);
 
-            // if (valeur == null) {
-            //     throw new IllegalArgumentException(
-            //         "Paramètre absent du formulaire : " + nomParametre
-            //     );
-            // }
-
             if (types[i] == String.class) {
 
+                // Sprint 7 : paramètre String
                 if (valeur == null) {
                     throw new IllegalArgumentException(
-                        "Paramètre absent du formulaire : " + nomParametre
-                    );
+                            "Paramètre absent du formulaire : "
+                                    + nomParametre);
                 }
 
                 arguments[i] = valeur;
 
-            } else if (types[i] == int.class || types[i] == Integer.class) {
+            } else if (types[i] == int.class
+                    || types[i] == Integer.class) {
 
+                // Sprint 7 : paramètre entier
                 if (valeur == null) {
                     throw new IllegalArgumentException(
-                        "Paramètre absent du formulaire : " + nomParametre
-                    );
+                            "Paramètre absent du formulaire : "
+                                    + nomParametre);
                 }
 
                 arguments[i] = Integer.parseInt(valeur);
@@ -209,29 +212,14 @@ public class Utilitaire {
 
             } else {
 
-                // throw new IllegalArgumentException(
-                //         "Type non supporté : " + types[i]);vv
-                // Sprint 7 bis : binding vers un objet Java
-                arguments[i] = remplirObjet(types[i], req);
-            }
-
-            if (types[i] == String.class) {
-                arguments[i] = valeur;
-
-            } else if (types[i] == int.class || types[i] == Integer.class) {
-                arguments[i] = Integer.parseInt(valeur);
-
-            } else if (Map.class.isAssignableFrom(types[i])) {
-
-                // Sprint 8 : récupération des fichiers
-                arguments[i] = lireFichiers(req);
-
-            } else {
                 // Sprint 7 bis : binding vers un objet Java
                 arguments[i] = remplirObjet(types[i], req);
             }
         }
 
+        // Sprint 9A :
+        // Invoquer la méthode sur l'instance partagée reçue,
+        // sans créer une nouvelle instance du contrôleur.
         return methode.invoke(instance, arguments);
     }
 
