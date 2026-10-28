@@ -263,10 +263,7 @@ public class Utilitaire {
             }
 
             // Sprint 9A :
-            // Invoquer la méthode sur l'instance partagée du contrôleur.
-            // Ne pas créer une nouvelle instance ici.
-            // return methode.invoke(instance, arguments);
-
+            // Invoquer la méthode sur l'instance partagée du contrôleur sans cree une nouvelle instance
             // Exécuter la méthode du contrôleur
             Object resultat = methode.invoke(instance, arguments);
 
