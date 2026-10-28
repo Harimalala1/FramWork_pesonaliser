@@ -98,7 +98,6 @@ public class FrontServletController extends HttpServlet {
             UrlMethode urlMethode = utilitaire.trouverUrlMethode(chemin, req.getMethod(), urlMappings);
             // Object result = utilitaire.lireMethodeAndClass(urlMethode);
             // Object result = utilitaire.lireMethodeAndClass(urlMethode, req);
-
             // Sprint 9A : récupérer l'instance partagée du contrôleur
             Object controller = getControllerInstance(urlMethode.getClassName());
 
