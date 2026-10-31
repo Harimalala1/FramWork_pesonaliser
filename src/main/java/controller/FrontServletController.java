@@ -19,14 +19,15 @@ import service.UtilMethode;
 import service.Utilitaire;
 import jakarta.servlet.annotation.MultipartConfig;
 
-import java.util.HashMap;
-import jakarta.servlet.ServletContext;
+// import java.util.HashMap;
+// import jakarta.servlet.ServletContext;
 
 import definition.Auth;
 import definition.Role;
 import java.lang.reflect.Method;
 import jakarta.servlet.http.HttpSession;
 
+import singleton.ControllerSingleton;
 // @WebServlet(urlPatterns = "/", loadOnStartup = 1)
 @MultipartConfig
 public class FrontServletController extends HttpServlet {
@@ -72,37 +73,37 @@ public class FrontServletController extends HttpServlet {
      * Récupère l'instance existante d'un contrôleur.
      * Si elle n'existe pas,on la crée et on la conserve dans le ServletContext.
      */
-    @SuppressWarnings("unchecked")
-    private Object getControllerInstance(String className) throws Exception {
+    // @SuppressWarnings("unchecked")
+    // private Object getControllerInstance(String className) throws Exception {
 
-        ServletContext context = getServletContext();
+    //     ServletContext context = getServletContext();
 
-        Map<String, Object> controllerInstances =
-                (Map<String, Object>) context.getAttribute("controllerInstances");
+    //     Map<String, Object> controllerInstances =
+    //             (Map<String, Object>) context.getAttribute("controllerInstances");
 
-        if (controllerInstances == null) {
-            throw new IllegalStateException(
-                    "La Map controllerInstances n'est pas initialisée.");
-        }
+    //     if (controllerInstances == null) {
+    //         throw new IllegalStateException(
+    //                 "La Map controllerInstances n'est pas initialisée.");
+    //     }
 
-        // Une seule instance doit être créée par classe de contrôleur.
-        synchronized (controllerInstances) {
+    //     // Une seule instance doit être créée par classe de contrôleur.
+    //     synchronized (controllerInstances) {
 
-            Object instance = controllerInstances.get(className);
+    //         Object instance = controllerInstances.get(className);
 
-            if (instance == null) {
-                Class<?> controllerClass = Class.forName(className);
+    //         if (instance == null) {
+    //             Class<?> controllerClass = Class.forName(className);
 
-                instance = controllerClass
-                        .getDeclaredConstructor()
-                        .newInstance();
+    //             instance = controllerClass
+    //                     .getDeclaredConstructor()
+    //                     .newInstance();
 
-                controllerInstances.put(className, instance);
-            }
+    //             controllerInstances.put(className, instance);
+    //         }
 
-            return instance;
-        }
-    }
+    //         return instance;
+    //     }
+    // }
 
 
     @SuppressWarnings("unchecked")
@@ -184,9 +185,8 @@ public class FrontServletController extends HttpServlet {
 
             // Object result = utilitaire.lireMethodeAndClass(urlMethode);
             // Object result = utilitaire.lireMethodeAndClass(urlMethode, req);
-            // Sprint 9A : récupérer l'instance partagée du contrôleur
-            Object controller = getControllerInstance(urlMethode.getClassName());
-
+            // Sprint 9A : récupérer l'instance partagée du contrôleur avant, maintenant Sprint 11 : récupérer l'instance unique du contrôleur via Singleton
+            Object controller = ControllerSingleton.getInstance().getController(urlMethode.getClassName());
             // Exécuter l'action sur cette instance
             Object result = utilitaire.lireMethodeAndClass(urlMethode, req, controller);
 
