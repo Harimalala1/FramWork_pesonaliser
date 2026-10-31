@@ -25,6 +25,9 @@ import java.io.InputStream;
 import java.util.LinkedHashMap;
 import jakarta.servlet.http.Part;
 
+import jakarta.servlet.http.HttpSession;
+
+
 public class Utilitaire {
 
     // ===================== Sprint 1 =====================
@@ -129,7 +132,6 @@ public class Utilitaire {
         }
         return urlMethode;
     }
-
     // Invoque la méthode et retourne sa valeur de retour 
     //ancien lireMethodeAndClass sans paramètre HttpServletRequest
     //
@@ -140,100 +142,177 @@ public class Utilitaire {
     //     return methode.invoke(instance);
     // }
 
-    
 
-    public Object lireMethodeAndClass(
-            UrlMethode urlMethode,
-            HttpServletRequest req) throws Exception {
 
-        Class<?> classMethod = Class.forName(urlMethode.getClassName());
+   
+        // Invoque la méthode du contrôleur et retourne sa valeur de retour
+        // Sprint 9A : utilise l'instance partagée du contrôleur
+        // Sprint 9B : prise en charge du paramètre MySession
+        public Object lireMethodeAndClass(
+                UrlMethode urlMethode,
+                HttpServletRequest req,
+                Object instance) throws Exception {
 
-        Object instance = classMethod.getDeclaredConstructor().newInstance();
+            // Sprint 9A :
+            // Avant, le framework créait une nouvelle instance du contrôleur
+            // à chaque requête.
+            // Maintenant, FrontServletController récupère ou crée l'instance
+            // partagée dans le ServletContext.
 
-        // Récupérer les paramètres de la méthode
-        Method methode = null;
+            // Récupérer la classe du contrôleur
+            Class<?> classMethod = Class.forName(urlMethode.getClassName());
 
-        for (Method m : classMethod.getMethods()) {
-            if (m.getName().equals(urlMethode.getMethodeName())) {
-                methode = m;
-                break;
+            // Vérifier que l'instance reçue correspond au contrôleur attendu
+            if (instance == null || !classMethod.isInstance(instance)) {
+                throw new IllegalArgumentException(
+                        "Instance du contrôleur invalide pour : "
+                                + urlMethode.getClassName());
             }
-        }
 
-        if (methode == null) {
-            throw new NoSuchMethodException(urlMethode.getMethodeName());
-        }
+            // Récupérer la méthode du contrôleur
+            Method methode = null;
 
-        // Préparer les arguments
-        Class<?>[] types = methode.getParameterTypes();
-        Object[] arguments = new Object[types.length];
-
-        for (int i = 0; i < types.length; i++) {
-
-            // String nomParametre = methode.getParameters()[i].getName();
-            // String valeur = req.getParameter(nomParametre);
-
-            String nomParametre = methode.getParameters()[i].getName();
-            String valeur = req.getParameter(nomParametre);
-
-            // if (valeur == null) {
-            //     throw new IllegalArgumentException(
-            //         "Paramètre absent du formulaire : " + nomParametre
-            //     );
-            // }
-
-            if (types[i] == String.class) {
-
-                if (valeur == null) {
-                    throw new IllegalArgumentException(
-                        "Paramètre absent du formulaire : " + nomParametre
-                    );
+            for (Method m : classMethod.getMethods()) {
+                if (m.getName().equals(urlMethode.getMethodeName())) {
+                    methode = m;
+                    break;
                 }
+            }
 
-                arguments[i] = valeur;
+            // Vérifier que la méthode existe
+            if (methode == null) {
+                throw new NoSuchMethodException(
+                        urlMethode.getMethodeName());
+            }
 
-            } else if (types[i] == int.class || types[i] == Integer.class) {
+            // Préparer les arguments de la méthode
+            Class<?>[] types = methode.getParameterTypes();
+            Object[] arguments = new Object[types.length];
 
-                if (valeur == null) {
-                    throw new IllegalArgumentException(
-                        "Paramètre absent du formulaire : " + nomParametre
-                    );
+            for (int i = 0; i < types.length; i++) {
+
+                // Sprint 9B :
+                // Si le paramètre est de type MySession,
+                // le framework crée automatiquement une instance.
+                // La liaison avec HttpSession sera ajoutée dans une étape suivante.
+                if (types[i] == MySession.class) {
+
+                // Sprint 9B : récupérer la véritable session HTTP
+                HttpSession sessionHttp = req.getSession();
+
+                // Créer le wrapper utilisé par le contrôleur
+                MySession mySession = new MySession();
+
+                // Charger les données déjà présentes dans HttpSession
+                Enumeration<String> noms =
+                        sessionHttp.getAttributeNames();
+
+                while (noms.hasMoreElements()) {
+                    String nom = noms.nextElement();
+
+                    Object valeur = sessionHttp.getAttribute(nom);
+
+                    mySession.add(nom, valeur);
                 }
+                // Transmettre le wrapper à la méthode du contrôleur
+                arguments[i] = mySession;
 
-                arguments[i] = Integer.parseInt(valeur);
+                } else {
 
-            } else if (Map.class.isAssignableFrom(types[i])) {
+                    // Récupérer le nom et la valeur du paramètre
+                    // transmis par le formulaire HTTP
+                    String nomParametre = methode.getParameters()[i].getName();
+                    String valeur = req.getParameter(nomParametre);
 
-                // Sprint 8 : binding des fichiers uploadés
-                arguments[i] = lireFichiers(req);
+                    if (types[i] == String.class) {
 
-            } else {
+                        // Sprint 7 : binding d'un paramètre String
+                        if (valeur == null) {
+                            throw new IllegalArgumentException(
+                                    "Paramètre absent du formulaire : "
+                                            + nomParametre);
+                        }
 
-                // throw new IllegalArgumentException(
-                //         "Type non supporté : " + types[i]);vv
-                // Sprint 7 bis : binding vers un objet Java
-                arguments[i] = remplirObjet(types[i], req);
+                        arguments[i] = valeur;
+
+                    } else if (types[i] == int.class
+                            || types[i] == Integer.class) {
+
+                        // Sprint 7 : binding d'un paramètre entier
+                        if (valeur == null) {
+                            throw new IllegalArgumentException(
+                                    "Paramètre absent du formulaire : "
+                                            + nomParametre);
+                        }
+
+                        arguments[i] = Integer.parseInt(valeur);
+
+                    } else if (Map.class.isAssignableFrom(types[i])) {
+
+                        // Sprint 8 : binding des fichiers uploadés
+                        // Récupérer les fichiers transmis dans la requête
+                        arguments[i] = lireFichiers(req);
+
+                    } else {
+
+                        // Sprint 7 bis : binding vers un objet Java
+                        // Remplir les attributs de l'objet avec les paramètres HTTP
+                        arguments[i] = remplirObjet(types[i], req);
+                    }
+                }
             }
 
-            if (types[i] == String.class) {
-                arguments[i] = valeur;
+            // Sprint 9A :
+            // Invoquer la méthode sur l'instance partagée du contrôleur sans cree une nouvelle instance
+            // Exécuter la méthode du contrôleur
+            Object resultat = methode.invoke(instance, arguments);
 
-            } else if (types[i] == int.class || types[i] == Integer.class) {
-                arguments[i] = Integer.parseInt(valeur);
+            // Sprint 9B : synchroniser MySession avec HttpSession
+            for (Object argument : arguments) {
 
-            } else if (Map.class.isAssignableFrom(types[i])) {
+                if (argument instanceof MySession) {
 
-                // Sprint 8 : récupération des fichiers
-                arguments[i] = lireFichiers(req);
+                    MySession mySession = (MySession) argument;
+                    HttpSession sessionHttp = req.getSession();
 
-            } else {
-                // Sprint 7 bis : binding vers un objet Java
-                arguments[i] = remplirObjet(types[i], req);
+                    Map<String, Object> donnees = mySession.getDonnees();
+
+                    // Retirer de HttpSession les clés supprimées dans MySession
+                    List<String> nomsExistants = new ArrayList<>();
+
+                    Enumeration<String> noms =
+                            sessionHttp.getAttributeNames();
+
+                    while (noms.hasMoreElements()) {
+                        nomsExistants.add(noms.nextElement());
+                    }
+
+                    for (String nom : nomsExistants) {
+                        if (!donnees.containsKey(nom)) {
+                            sessionHttp.removeAttribute(nom);
+                        }
+                    }
+
+                    // Ajouter ou mettre à jour les données
+                    for (Map.Entry<String, Object> entree
+                            : donnees.entrySet()) {
+
+                        String nom = entree.getKey();
+                        Object valeur = entree.getValue();
+
+                        if (valeur == null) {
+                            sessionHttp.removeAttribute(nom);
+                        } else {
+                            sessionHttp.setAttribute(nom, valeur);
+                        }
+                    }
+                }
             }
+
+            // Retourner le résultat habituel du contrôleur
+            return resultat;
         }
 
-        return methode.invoke(instance, arguments);
-    }
 
     //sprint 7 bis : argument mivadika objet exemple(eleve) pour la clase developpeur
     private Object remplirObjet(Class<?> classe, HttpServletRequest req)
