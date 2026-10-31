@@ -23,6 +23,7 @@ import java.util.HashMap;
 import jakarta.servlet.ServletContext;
 
 import definition.Auth;
+import definition.Role;
 import java.lang.reflect.Method;
 import jakarta.servlet.http.HttpSession;
 
@@ -34,16 +35,27 @@ public class FrontServletController extends HttpServlet {
     private List<String> listController;
     //sprint10
     private String sessionAuthName;
+    // Sprint 10 bis
+    private String sessionRoleName;
+
     // Sprint 1 : liste des classes annotées @Controller
     @Override
     public void init() throws ServletException {
         String packageName = (String) getServletContext().getAttribute("packageController");
-        
+
         //sprint10
         sessionAuthName = getServletConfig().getInitParameter("sessionAuthName");
         if (sessionAuthName == null || sessionAuthName.trim().isEmpty()) {
             throw new ServletException(
                 "Le paramètre sessionAuthName est absent de web.xml"
+            );
+        }
+
+        //bis : sessionRoleName
+        sessionRoleName = getServletConfig().getInitParameter("sessionRoleName");
+        if (sessionRoleName == null || sessionRoleName.trim().isEmpty()) {
+            throw new ServletException(
+                "Le paramètre sessionRoleName est absent de web.xml"
             );
         }
         //---
@@ -111,10 +123,11 @@ public class FrontServletController extends HttpServlet {
         try {
             UrlMethode urlMethode = utilitaire.trouverUrlMethode(chemin, req.getMethod(), urlMappings);
 
+            // Récupérer la session existante une seule fois
+            HttpSession session = req.getSession(false);
+
             // Sprint 10 : contrôle d'authentification
             if (verifierAuth(urlMethode)) {
-
-                HttpSession session = req.getSession(false);
 
                 boolean authentifie = session != null
                     && Boolean.TRUE.equals(session.getAttribute(sessionAuthName));
@@ -127,6 +140,48 @@ public class FrontServletController extends HttpServlet {
                     return;
                 }
             }
+
+            // Sprint 10 bis : contrôle des rôles
+            String[] rolesAutorises = getRolesAutorises(urlMethode);
+
+            if (rolesAutorises != null) {
+
+                // Vérifier la configuration
+                if (sessionRoleName == null || sessionRoleName.trim().isEmpty()) {
+                    throw new ServletException(
+                        "Le paramètre sessionRoleName est absent de web.xml"
+                    );
+                }
+
+                // Récupérer le profil de l'utilisateur
+                Object profil = session == null
+                    ? null
+                    : session.getAttribute(sessionRoleName);
+
+                boolean roleAutorise = false;
+
+                // Vérifier si le profil correspond à un rôle autorisé
+                if (profil instanceof String) {
+
+                    for (String role : rolesAutorises) {
+
+                        if (role.equals(profil)) {
+                            roleAutorise = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Refuser l'accès si aucun rôle ne correspond
+                if (!roleAutorise) {
+                    res.sendError(
+                        HttpServletResponse.SC_FORBIDDEN,
+                        "Vous n'avez pas le rôle nécessaire pour accéder à cette page."
+                    );
+                    return;
+                }
+            }
+
             // Object result = utilitaire.lireMethodeAndClass(urlMethode);
             // Object result = utilitaire.lireMethodeAndClass(urlMethode, req);
             // Sprint 9A : récupérer l'instance partagée du contrôleur
@@ -172,8 +227,39 @@ public class FrontServletController extends HttpServlet {
         }
     }
 
-    // Sprint 10 : vérifier si une méthode nécessite une authentification
+
+    /// Sprint 10 : vérifier si une méthode nécessite une authentification (annotation @Auth)
     private boolean verifierAuth(UrlMethode urlMethode) throws Exception {
+
+        Class<?> classe = Class.forName(urlMethode.getClassName());
+
+        Method[] methodes = classe.getDeclaredMethods();
+
+        boolean methodeTrouvee = false;
+
+        for (Method methode : methodes) {
+
+            if (methode.getName().equals(urlMethode.getMethodeName())) {
+
+                methodeTrouvee = true;
+
+                if (methode.isAnnotationPresent(Auth.class)) {
+                    return true;
+                }
+            }
+        }
+
+        if (!methodeTrouvee) {
+            throw new NoSuchMethodException(
+                "Méthode introuvable : " + urlMethode.getMethodeName()
+            );
+        }
+
+        return false;
+    }
+
+    // Sprint 10 bis : récupérer les rôles autorisés d'une méthode
+    private String[] getRolesAutorises(UrlMethode urlMethode) throws Exception {
 
         Class<?> classe = Class.forName(urlMethode.getClassName());
 
@@ -183,7 +269,15 @@ public class FrontServletController extends HttpServlet {
 
             if (methode.getName().equals(urlMethode.getMethodeName())) {
 
-                return methode.isAnnotationPresent(Auth.class);
+                Role annotationRole = methode.getAnnotation(Role.class);
+
+                // Si la méthode n'a pas @Role, elle reste accessible
+                if (annotationRole == null) {
+                    return null;
+                }
+
+                // La méthode possède @Role : récupérer les rôles autorisés
+                return annotationRole.value();
             }
         }
 
