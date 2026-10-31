@@ -22,17 +22,31 @@ import jakarta.servlet.annotation.MultipartConfig;
 import java.util.HashMap;
 import jakarta.servlet.ServletContext;
 
-@WebServlet(urlPatterns = "/", loadOnStartup = 1)
+import definition.Auth;
+import java.lang.reflect.Method;
+import jakarta.servlet.http.HttpSession;
+
+// @WebServlet(urlPatterns = "/", loadOnStartup = 1)
 @MultipartConfig
 public class FrontServletController extends HttpServlet {
 
     private final Utilitaire utilitaire = new Utilitaire();
     private List<String> listController;
-
+    //sprint10
+    private String sessionAuthName;
     // Sprint 1 : liste des classes annotées @Controller
     @Override
     public void init() throws ServletException {
         String packageName = (String) getServletContext().getAttribute("packageController");
+        
+        //sprint10
+        sessionAuthName = getServletConfig().getInitParameter("sessionAuthName");
+        if (sessionAuthName == null || sessionAuthName.trim().isEmpty()) {
+            throw new ServletException(
+                "Le paramètre sessionAuthName est absent de web.xml"
+            );
+        }
+        //---
         try {
             listController = utilitaire.getAllClassesWithAnnotationInPackage(
                     packageName, Controller.class, Niveau.CLASSE);
@@ -96,6 +110,23 @@ public class FrontServletController extends HttpServlet {
 
         try {
             UrlMethode urlMethode = utilitaire.trouverUrlMethode(chemin, req.getMethod(), urlMappings);
+
+            // Sprint 10 : contrôle d'authentification
+            if (verifierAuth(urlMethode)) {
+
+                HttpSession session = req.getSession(false);
+
+                boolean authentifie = session != null
+                    && Boolean.TRUE.equals(session.getAttribute(sessionAuthName));
+
+                if (!authentifie) {
+                    res.sendError(
+                        HttpServletResponse.SC_FORBIDDEN,
+                        "Vous devez être authentifié pour accéder à cette page."
+                    );
+                    return;
+                }
+            }
             // Object result = utilitaire.lireMethodeAndClass(urlMethode);
             // Object result = utilitaire.lireMethodeAndClass(urlMethode, req);
             // Sprint 9A : récupérer l'instance partagée du contrôleur
@@ -139,6 +170,26 @@ public class FrontServletController extends HttpServlet {
             e.printStackTrace();
             res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.toString());
         }
+    }
+
+    // Sprint 10 : vérifier si une méthode nécessite une authentification
+    private boolean verifierAuth(UrlMethode urlMethode) throws Exception {
+
+        Class<?> classe = Class.forName(urlMethode.getClassName());
+
+        Method[] methodes = classe.getDeclaredMethods();
+
+        for (Method methode : methodes) {
+
+            if (methode.getName().equals(urlMethode.getMethodeName())) {
+
+                return methode.isAnnotationPresent(Auth.class);
+            }
+        }
+
+        throw new NoSuchMethodException(
+            "Méthode introuvable : " + urlMethode.getMethodeName()
+        );
     }
 
     @Override
